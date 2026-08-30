@@ -111,6 +111,33 @@ def course_similarity_recommendations(idx_id_dict, id_idx_dict, enrolled_course_
 
 
 
+def user_profile_recommendations(course_ids, course_matrix, user_vector, threshold):
+    """
+    Scores candidate courses against a user profile vector.
+
+    Each course row is dotted with the user's genre weights, so a course whose
+    genres line up with what the user already likes scores higher. Only courses
+    at or above `threshold` are kept.
+
+    Returns two parallel lists: the surviving course ids and their scores.
+    """
+    if len(course_ids) == 0:
+        return [], []
+
+    course_matrix = np.asarray(course_matrix, dtype=float)
+    user_vector = np.asarray(user_vector, dtype=float)
+
+    recommendation_scores = np.dot(course_matrix, user_vector)
+
+    courses, scores = [], []
+    for i in range(len(course_ids)):
+        score = recommendation_scores[i]
+        if score >= threshold:
+            courses.append(course_ids[i])
+            scores.append(score)
+    return courses, scores
+
+
 def combine_cluster_labels(user_ids, labels):
   #  Helper function to merge the user IDs with the cluster labels to produce a DF:
    #    map user to cluster
@@ -258,16 +285,10 @@ def predict(model_name, user_ids, params):
             unknown_course_ids = unknown_course_df['COURSE_ID'].values
             course_matrix = unknown_course_df.iloc[:, 2:].values  # skip COURSE_ID
 
-            # create the recommendation scores via dot product
-            recommendation_scores = np.dot(course_matrix, test_user_vector)
-
-            # retain only courses above the profile_sim_threshold
-            courses, scores = [], []
-            for i in range(len(unknown_course_ids)):
-                score = recommendation_scores[i]
-                if score >= profile_sim_threshold:
-                    courses.append(unknown_course_ids[i])
-                    scores.append(score)
+            # score by dot product and keep what clears profile_sim_threshold
+            courses, scores = user_profile_recommendations(
+                unknown_course_ids, course_matrix, test_user_vector, profile_sim_threshold
+            )
 
             res_dict = {
                 'COURSE_ID': courses,
