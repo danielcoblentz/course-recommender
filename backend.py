@@ -306,7 +306,7 @@ def predict(model_name, user_ids, params):
             if temp_user_two is not None:
                 temp_user_two = int(temp_user_two)
                 filt = trained_df['user'] == temp_user_two
-                cluster_value = int(trained_df[filt]['cluster'])
+                cluster_value = int(trained_df[filt]['cluster'].iloc[0])
                 #  all users in that cluster
                 res_df = trained_df[trained_df['cluster'] == cluster_value]
 
@@ -318,7 +318,7 @@ def predict(model_name, user_ids, params):
             if temp_user_two is not None:
                 temp_user_two = int(temp_user_two)
                 filt = trained_df['user'] == temp_user_two
-                cluster_value = int(trained_df[filt]['cluster'])
+                cluster_value = int(trained_df[filt]['cluster'].iloc[0])
                 # get all users in that cluster
                 res_df = trained_df[trained_df['cluster'] == cluster_value]
         break
