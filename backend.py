@@ -35,20 +35,20 @@ def load_courses_genre():
 
 def load_bow():
     """
-    loads the 'courses_bows.csv' file, which might contain Bag-Of-Words text features for courses
+    Loads the Bag-of-Words text features for each course.
     """
     return pd.read_csv("courses_bows.csv")
 
 def add_new_ratings(new_courses):
     """
-            For the course similarity model: 
-            1Creates a new user by assigning a new user ID (max existing user + 1)
-            2 Attaches the selected courses to this new user with a default rating
-            3 Saves back to ratings.csv
+    Records the courses a visitor selected under a brand new user ID.
+
+    1. Assigns a new user ID (max existing user + 1)
+    2. Attaches the selected courses to that user with a default rating
+    3. Saves back to ratings.csv
     """
     res_dict = {}
     if len(new_courses) > 0:
-        #  existing ratings
         ratings_df = load_ratings()
         # next user ID
         new_id = ratings_df['user'].max() + 1
@@ -71,7 +71,7 @@ def get_doc_dicts():
     Creates dictionaries mapping doc indices to doc IDs and vice versa for  Bag-of-Words data
     """
     bow_df = load_bow()
-    # group by doc_index, doc_id to ensure theres a unique row
+    # group by doc_index, doc_id to ensure there is a unique row
     grouped_df = bow_df.groupby(['doc_index', 'doc_id']).max().reset_index(drop=False)
     idx_id_dict = grouped_df[['doc_id']].to_dict()['doc_id']
     id_idx_dict = {v: k for k, v in idx_id_dict.items()}
@@ -89,7 +89,6 @@ def course_similarity_recommendations(idx_id_dict, id_idx_dict, enrolled_course_
     # This dict will store course_id -> best similarity
     res = {}
 
-    #for each enrolled course  compare to each unselected course
     for enrolled_course in enrolled_course_ids:
         for unselect_course in unselected_course_ids:
             if enrolled_course in id_idx_dict and unselect_course in id_idx_dict:
@@ -105,7 +104,6 @@ def course_similarity_recommendations(idx_id_dict, id_idx_dict, enrolled_course_
 
 
 
-    # sort by similarity in descending order
     res = {k: v for k, v in sorted(res.items(), key=lambda item: item[1], reverse=True)}
     return res
 
@@ -139,8 +137,12 @@ def user_profile_recommendations(course_ids, course_matrix, user_vector, thresho
 
 
 def combine_cluster_labels(user_ids, labels):
-  #  Helper function to merge the user IDs with the cluster labels to produce a DF:
-   #    map user to cluster
+    """
+    Pairs each user ID with its K-Means cluster label.
+
+    KMeans returns labels positionally, so the join is on row position rather
+    than on a key, which is why the user IDs must arrive in their original order.
+    """
     labels_df = pd.DataFrame(labels)
     cluster_df = pd.merge(user_ids, labels_df, left_index=True, right_index=True)
     cluster_df.columns = ['user', 'cluster']
@@ -161,7 +163,7 @@ def train(model_name, params):
     if "cluster_no" in params:
         cluster_no = params["cluster_no"]
     else:
-        cluster_no = 5  # fallback if not provided ( this migth be chged to 3 or 4 fro better results)
+        cluster_no = 5  # fallback if not provided (may be worth trying 3 or 4 for better results)
 
     if model_name == models[2]:
         # Basic clustering (no PCA)
@@ -169,7 +171,7 @@ def train(model_name, params):
         scaler = StandardScaler()
 
 
-        # every columns except user are features
+        # every column except user is a feature
         feature_names = list(user_profile_df.columns[1:])
         features = user_profile_df.loc[:, user_profile_df.columns != 'user']
 
@@ -218,7 +220,7 @@ def predict(model_name, user_ids, params):
     # 1 for course Sim: find similar courses
     # 2 for User Profile: uses a dot-product approach with user and course vectors
     # 3 for clustering: returns the cluster of a specific user or set of users
-    # 4 or clustering with PCA: same as above but after training with PCA
+    # 4 for clustering with PCA: same as above but after training with PCA
   
     sim_threshold = 0.6
     profile_sim_threshold = 10.0
@@ -271,7 +273,6 @@ def predict(model_name, user_ids, params):
             profile_df = load_profile()
             course_genres_df = load_courses_genre()
 
-            #  set of all course ids
             all_courses = set(course_genres_df['COURSE_ID'].values)
 
             # get the feature vector for the user
@@ -283,7 +284,7 @@ def predict(model_name, user_ids, params):
             unknown_courses = all_courses.difference(enrolled_courses)
             unknown_course_df = course_genres_df[course_genres_df['COURSE_ID'].isin(unknown_courses)]
             unknown_course_ids = unknown_course_df['COURSE_ID'].values
-            course_matrix = unknown_course_df.iloc[:, 2:].values  # skip COURSE_ID
+            course_matrix = unknown_course_df.iloc[:, 2:].values  # genre columns only, skipping COURSE_ID and TITLE
 
             # score by dot product and keep what clears profile_sim_threshold
             courses, scores = user_profile_recommendations(

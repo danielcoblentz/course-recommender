@@ -37,7 +37,7 @@ def load_courses_genre():
 def load_bow():
     return backend.load_bow()
 
-def init__recommender_app():
+def init_recommender_app():
     """
      function loads all datasets once, returns a DataFrame of the selected courses
     """
@@ -64,7 +64,6 @@ def init__recommender_app():
 
 
 
-    # Create a grid response
     response = AgGrid(
         course_df,
         gridOptions=grid_options,
@@ -101,7 +100,7 @@ def predict(model_name, user_ids, params):
 # --------------- MAIN UI ---------------
 st.sidebar.title('Personalized Learning Recommender')
 
-selected_courses_df = init__recommender_app()
+selected_courses_df = init_recommender_app()
 
 st.sidebar.subheader('1. Select Recommendation Model')
 model_selection = st.sidebar.selectbox(
@@ -113,7 +112,7 @@ params = {}
 st.sidebar.subheader('2. Tune Hyper-parameters:')
 
 
-    # Course Similarity
+# Course Similarity
 if model_selection == backend.models[0]:
     top_courses = st.sidebar.slider('Top courses', min_value=0, max_value=100, value=10, step=1)
     course_sim_threshold = st.sidebar.slider('Course Similarity Threshold %',
@@ -123,7 +122,7 @@ if model_selection == backend.models[0]:
     params['sim_threshold'] = course_sim_threshold
 
 
-    # User Profile
+# User Profile
 elif model_selection == backend.models[1]:
     profile_sim_threshold = st.sidebar.slider('User Profile Similarity Threshold %',
                                               min_value=0, max_value=50,
@@ -136,7 +135,7 @@ elif model_selection == backend.models[1]:
     params['user_id'] = temp_user
 
 
-    # Clustering (no PCA)
+# Clustering (no PCA)
 elif model_selection == backend.models[2]:
     cluster_no = st.sidebar.slider('Number of Clusters', min_value=2, max_value=50, value=5, step=1)
     profile_df = load_profile()
@@ -147,7 +146,7 @@ elif model_selection == backend.models[2]:
     params['temp_user_two'] = temp_user_two
 
 
-    # clustering w PCA
+# clustering w PCA
 elif model_selection == backend.models[3]:
     cluster_no = st.sidebar.slider('Number of Clusters', min_value=2, max_value=50, value=5, step=1)
     pca_components = st.sidebar.slider('Number of PCA Components', min_value=2, max_value=10, value=2, step=1)
@@ -172,7 +171,7 @@ if training_button:
 st.sidebar.subheader('4. Prediction')
 pred_button = st.sidebar.button("Recommend New Courses")
 if pred_button:
-            # Course sim
+    # Course sim
     if model_selection == backend.models[0]:
         new_id = backend.add_new_ratings(selected_courses_df['COURSE_ID'].values)
         user_ids = [new_id]
