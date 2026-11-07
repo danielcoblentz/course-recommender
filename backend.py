@@ -39,33 +39,6 @@ def load_bow():
     """
     return pd.read_csv("courses_bows.csv")
 
-def add_new_ratings(new_courses):
-    """
-    Records the courses a visitor selected under a brand new user ID.
-
-    1. Assigns a new user ID (max existing user + 1)
-    2. Attaches the selected courses to that user with a default rating
-    3. Saves back to ratings.csv
-    """
-    res_dict = {}
-    if len(new_courses) > 0:
-        ratings_df = load_ratings()
-        # next user ID
-        new_id = ratings_df['user'].max() + 1
-        users = [new_id] * len(new_courses)
-        ratings = [3.0] * len(new_courses)
-
-        res_dict['user'] = users
-        res_dict['item'] = new_courses
-        res_dict['rating'] = ratings
-
-        new_df = pd.DataFrame(res_dict)
-        updated_ratings = pd.concat([ratings_df, new_df])
-        updated_ratings.to_csv("ratings.csv", index=False)
-        return new_id
-    
-
-
 def get_doc_dicts():
     """
     Creates dictionaries mapping doc indices to doc IDs and vice versa for  Bag-of-Words data
@@ -202,10 +175,8 @@ def predict(model_name, user_ids, params):
     for user_id in user_ids:
         if model_name == models[0]:
             # --- course similarity ---
-            ratings_df = load_ratings()
-            user_ratings = ratings_df[ratings_df['user'] == user_id]
-            enrolled_course_ids = user_ratings['item'].to_list()
-            
+            enrolled_course_ids = list(params.get('enrolled_courses', []))
+
             # dict of course->similarity
             res = course_similarity_recommendations(idx_id_dict, id_idx_dict, enrolled_course_ids, sim_matrix)
 

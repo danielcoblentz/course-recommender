@@ -76,8 +76,6 @@ The pinned `numpy==1.23.5` and `pandas==1.5.3` have no wheels for newer versions
 Streamlit serves the app at http://localhost:8501.
 Run it from the repository root, since the loaders in `backend.py` read the CSV files by relative path.
 
-Note that picking courses under the Course Similarity model appends a new user row to `ratings.csv`, so that file changes as you use the app.
-
 ## Tests
 
 The scoring functions in `backend.py` have unit tests.

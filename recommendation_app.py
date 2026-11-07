@@ -173,16 +173,18 @@ pred_button = st.sidebar.button("Recommend New Courses")
 if pred_button:
     # Course sim
     if model_selection == backend.models[0]:
-        new_id = backend.add_new_ratings(selected_courses_df['COURSE_ID'].values)
-        user_ids = [new_id]
-        res_df = predict(model_selection, user_ids, params)
-        if res_df is not None and not res_df.empty:
-            res_df = res_df[['COURSE_ID', 'SCORE']]
-            course_df = load_courses()
-            res_df = pd.merge(res_df, course_df, on=["COURSE_ID"]).drop('COURSE_ID', axis=1)
-            st.table(res_df)
+        params['enrolled_courses'] = selected_courses_df['COURSE_ID'].tolist()
+        if not params['enrolled_courses']:
+            st.warning("Select at least one course in the table first.")
         else:
-            st.info("No recommendations found")
+            res_df = predict(model_selection, [None], params)
+            if res_df is not None and not res_df.empty:
+                res_df = res_df[['COURSE_ID', 'SCORE']]
+                course_df = load_courses()
+                res_df = pd.merge(res_df, course_df, on=["COURSE_ID"]).drop('COURSE_ID', axis=1)
+                st.table(res_df)
+            else:
+                st.info("No recommendations found")
 
 
 
