@@ -4,18 +4,16 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
-# not all models complete only first 4
-models = (
-    "Course Similarity",  # models[0]
-    "User Profile",       # models[1]
-    "Clustering",         # models[2]
-    "Clustering with PCA" # models[3] 
-    #  "KNN",
-    #  "NMF",
-    #  "Neural Network",
-    #  "Regression with Embedding Features",
-    #  "Classification with Embedding Features"
-)
+COURSE_SIMILARITY = "Course Similarity"
+USER_PROFILE = "User Profile"
+CLUSTERING = "Clustering"
+CLUSTERING_PCA = "Clustering with PCA"
+
+# Four of the nine notebook techniques are wired into the app. KNN, NMF, the
+# neural network, and the embedding based regression and classification models
+# only exist in the notebooks so far.
+models = (COURSE_SIMILARITY, USER_PROFILE, CLUSTERING, CLUSTERING_PCA)
+
 def load_ratings():
     return pd.read_csv("ratings.csv")
 
@@ -143,118 +141,78 @@ def train(model_name, params):
     """
     cluster_no = params.get("cluster_no", 5)
 
-    if model_name == models[2]:
+    if model_name == CLUSTERING:
         return cluster_users(load_profile(), cluster_no)
-    elif model_name == models[3]:
+    elif model_name == CLUSTERING_PCA:
         return cluster_users(load_profile(), cluster_no, params.get("pca_components", 2))
 
-def predict(model_name, user_ids, params):
-   
-    # primary prediction function for all models
-    # 1 for course Sim: find similar courses
-    # 2 for User Profile: uses a dot-product approach with user and course vectors
-    # 3 for clustering: returns the cluster of a specific user or set of users
-    # 4 for clustering with PCA: same as above but after training with PCA
-  
-    sim_threshold = 0.6
-    profile_sim_threshold = 10.0
-    # convert relevant params
-    if "sim_threshold" in params:
-        sim_threshold = params["sim_threshold"] / 100.0
-    if "profile_sim_threshold" in params:
-        profile_sim_threshold = params["profile_sim_threshold"]
-
-    top_courses = params.get("top_courses", 10)
-    cluster_no = params.get("cluster_no", 5)
-    temp_user_two = params.get("temp_user_two", None)
-
+def predict_course_similarity(enrolled_course_ids, sim_threshold, top_courses):
+    """
+    Ranks the courses most similar to the ones selected, best first.
+    """
     idx_id_dict, id_idx_dict = get_doc_dicts()
     sim_matrix = load_course_sims().to_numpy()
-    res_df = None
+    res = course_similarity_recommendations(idx_id_dict, id_idx_dict, enrolled_course_ids, sim_matrix)
 
-    # Loop over each user in user_ids 
-    for user_id in user_ids:
-        if model_name == models[0]:
-            # --- course similarity ---
-            enrolled_course_ids = list(params.get('enrolled_courses', []))
-
-            # dict of course->similarity
-            res = course_similarity_recommendations(idx_id_dict, id_idx_dict, enrolled_course_ids, sim_matrix)
-
-            # res is sorted best first, so stop at the threshold or at top_courses
-            users, courses, scores = [], [], []
-            for key, score in res.items():
-                if score < sim_threshold or len(courses) >= top_courses:
-                    break
-                users.append(user_id)
-                courses.append(key)
-                scores.append(score)
-
-            res_dict = {
-                'USER': users,
-                'COURSE_ID': courses,
-                'SCORE': scores
-            }
-            res_df = pd.DataFrame(res_dict, columns=['USER', 'COURSE_ID', 'SCORE'])
-
-        elif model_name == models[1]:
-            # --- User Profile ---
-            # Use user_id from params if needed
-            temp_user = params.get('user_id', user_id)
-            temp_user = int(temp_user)
-            ratings_df = load_ratings()
-            profile_df = load_profile()
-            course_genres_df = load_courses_genre()
-
-            all_courses = set(course_genres_df['COURSE_ID'].values)
-
-            # get the feature vector for the user
-            test_user_profile = profile_df[profile_df['user'] == temp_user]
-            test_user_vector = test_user_profile.iloc[0, 1:].values
-
-            # courses the user hasn't taken
-            enrolled_courses = ratings_df[ratings_df['user'] == temp_user]['item'].to_list()
-            unknown_courses = all_courses.difference(enrolled_courses)
-            unknown_course_df = course_genres_df[course_genres_df['COURSE_ID'].isin(unknown_courses)]
-            unknown_course_ids = unknown_course_df['COURSE_ID'].values
-            course_matrix = unknown_course_df.iloc[:, 2:].values  # genre columns only, skipping COURSE_ID and TITLE
-
-            # score by dot product and keep what clears profile_sim_threshold
-            courses, scores = user_profile_recommendations(
-                unknown_course_ids, course_matrix, test_user_vector, profile_sim_threshold
-            )
-
-            res_dict = {
-                'COURSE_ID': courses,
-                'SCORE': scores
-            }
-            res_df = pd.DataFrame(res_dict, columns=['COURSE_ID', 'SCORE'])
+    # res is sorted best first, so stop at the threshold or at top_courses
+    courses, scores = [], []
+    for course_id, score in res.items():
+        if score < sim_threshold or len(courses) >= top_courses:
+            break
+        courses.append(course_id)
+        scores.append(score)
+    return pd.DataFrame({'COURSE_ID': courses, 'SCORE': scores})
 
 
-           # --- Clustering (No PCA) ---
-        elif model_name == models[2]:
-            #  re-train the model in the train function
-            trained_df = train(model_name, params)  # returns user->cluster
+def predict_user_profile(user_id, threshold):
+    """
+    Scores every course the user has not taken against their genre profile.
+    """
+    profile_df = load_profile()
+    user_profile = profile_df[profile_df['user'] == user_id]
+    if user_profile.empty:
+        return pd.DataFrame(columns=['COURSE_ID', 'SCORE'])
+    user_vector = user_profile.iloc[0, 1:].values
 
-            # temp_user_two is the user ID we want to see the cluster for
-            if temp_user_two is not None:
-                temp_user_two = int(temp_user_two)
-                filt = trained_df['user'] == temp_user_two
-                cluster_value = int(trained_df[filt]['cluster'].iloc[0])
-                #  all users in that cluster
-                res_df = trained_df[trained_df['cluster'] == cluster_value]
+    ratings_df = load_ratings()
+    enrolled_courses = ratings_df.loc[ratings_df['user'] == user_id, 'item']
+    course_genres_df = load_courses_genre()
+    unknown_course_df = course_genres_df[~course_genres_df['COURSE_ID'].isin(enrolled_courses)]
+    course_matrix = unknown_course_df.iloc[:, 2:].values  # genre columns only, skipping COURSE_ID and TITLE
+
+    courses, scores = user_profile_recommendations(
+        unknown_course_df['COURSE_ID'].values, course_matrix, user_vector, threshold
+    )
+    return pd.DataFrame({'COURSE_ID': courses, 'SCORE': scores})
 
 
-# --- clustering w PCA ---
-        elif model_name == models[3]:
-            trained_df = train(model_name, params)
+def predict_cluster_peers(model_name, user_id, params):
+    """
+    Returns every user that lands in the same cluster as `user_id`.
+    """
+    cluster_df = train(model_name, params)
+    user_rows = cluster_df[cluster_df['user'] == user_id]
+    if user_rows.empty:
+        return cluster_df.iloc[0:0]
+    return cluster_df[cluster_df['cluster'] == user_rows['cluster'].iloc[0]]
 
-            if temp_user_two is not None:
-                temp_user_two = int(temp_user_two)
-                filt = trained_df['user'] == temp_user_two
-                cluster_value = int(trained_df[filt]['cluster'].iloc[0])
-                # get all users in that cluster
-                res_df = trained_df[trained_df['cluster'] == cluster_value]
-        break
 
-    return res_df
+def predict(model_name, params):
+    """
+    Runs the selected model with the hyperparameters chosen in the sidebar.
+
+    Course Similarity and User Profile return COURSE_ID and SCORE columns; the
+    clustering models return the user and cluster of everyone who shares a
+    cluster with params['user_id'].
+    """
+    if model_name == COURSE_SIMILARITY:
+        return predict_course_similarity(
+            list(params.get('enrolled_courses', [])),
+            params.get('sim_threshold', 60) / 100.0,
+            params.get('top_courses', 10),
+        )
+    if model_name == USER_PROFILE:
+        return predict_user_profile(int(params['user_id']), params.get('profile_sim_threshold', 10.0))
+    if model_name in (CLUSTERING, CLUSTERING_PCA):
+        return predict_cluster_peers(model_name, int(params['user_id']), params)
+    raise ValueError(f"Unknown model: {model_name}")

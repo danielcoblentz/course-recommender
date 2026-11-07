@@ -222,3 +222,8 @@ class TestClusterUsers:
         first = backend.cluster_users(df, n_clusters=3, pca_components=2)
         second = backend.cluster_users(df, n_clusters=3, pca_components=2)
         assert first["cluster"].tolist() == second["cluster"].tolist()
+
+
+def test_predict_rejects_an_unknown_model():
+    with pytest.raises(ValueError):
+        backend.predict("Not A Model", {})
