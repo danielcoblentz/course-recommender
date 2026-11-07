@@ -148,65 +148,32 @@ def combine_cluster_labels(user_ids, labels):
     cluster_df.columns = ['user', 'cluster']
     return cluster_df
 
+def cluster_users(profile_df, n_clusters, pca_components=None):
+    """
+    Groups users with similar genre interests using K-Means.
+
+    1 standardize every feature column (all columns except `user`)
+    2 optionally reduce them to `pca_components` dimensions with PCA
+    3 fit K-Means and return a DF mapping each user to a cluster label
+    """
+    features = StandardScaler().fit_transform(profile_df.drop(columns='user'))
+    if pca_components is not None:
+        features = PCA(n_components=pca_components, random_state=42).fit_transform(features)
+
+    km = KMeans(n_clusters=n_clusters, random_state=42).fit(features)
+    return combine_cluster_labels(profile_df[['user']], labels=km.labels_)
+
+
 def train(model_name, params):
     """
-     training function for all models.
-    Checks the model_name and hyperparameters in params then trains the appropriate model.
-
-     clustering and c lustering with PCA:
-     1 Load user_profile.csv
-     2 standardize feature columns
-     3 PCA -> optional
-     4 fit a K-Means model
-     5 return a DF mapping each user to a cluster label
+    Trains the clustering models; the content based models have nothing to fit.
     """
-    if "cluster_no" in params:
-        cluster_no = params["cluster_no"]
-    else:
-        cluster_no = 5  # fallback if not provided (may be worth trying 3 or 4 for better results)
+    cluster_no = params.get("cluster_no", 5)
 
     if model_name == models[2]:
-        # Basic clustering (no PCA)
-        user_profile_df = load_profile()
-        scaler = StandardScaler()
-
-
-        # every column except user is a feature
-        feature_names = list(user_profile_df.columns[1:])
-        features = scaler.fit_transform(user_profile_df[feature_names])
-        user_ids = user_profile_df[['user']]
-
-        # fit Kmeans
-        km = KMeans(n_clusters=cluster_no, random_state=42)
-        km = km.fit(features)
-        cluster_labels = km.labels_
-
-        res_df = combine_cluster_labels(user_ids, labels=cluster_labels)
-        return res_df
-
-
-
+        return cluster_users(load_profile(), cluster_no)
     elif model_name == models[3]:
-        user_profile_df = load_profile()
-        scaler = StandardScaler()
-        pca_components = params.get("pca_components", 2)
-
-        # collect feature names
-        feature_names = list(user_profile_df.columns[1:])
-        features = scaler.fit_transform(user_profile_df[feature_names])
-        user_ids = user_profile_df[['user']]
-
-        # PCA for dimensionality reduction
-        pca = PCA(n_components=pca_components, random_state=42)
-        reduced_features = pca.fit_transform(features)
-
-        #  cluster the PCA-reduced features
-        km = KMeans(n_clusters=cluster_no, random_state=42)
-        km = km.fit(reduced_features)
-        cluster_labels = km.labels_
-
-        res_df = combine_cluster_labels(user_ids, labels=cluster_labels)
-        return res_df
+        return cluster_users(load_profile(), cluster_no, params.get("pca_components", 2))
 
 def predict(model_name, user_ids, params):
    
