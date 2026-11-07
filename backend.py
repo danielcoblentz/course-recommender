@@ -153,9 +153,10 @@ def predict_course_similarity(enrolled_course_ids, sim_threshold, top_courses):
     return pd.DataFrame({'COURSE_ID': courses, 'SCORE': scores})
 
 
-def predict_user_profile(user_id, threshold):
+def predict_user_profile(user_id, threshold, top_courses):
     """
-    Scores every course the user has not taken against their genre profile.
+    Scores every course the user has not taken against their genre profile,
+    and returns the best `top_courses` of them, best first.
     """
     profile_df = load_profile()
     user_profile = profile_df[profile_df['user'] == user_id]
@@ -172,7 +173,8 @@ def predict_user_profile(user_id, threshold):
     courses, scores = user_profile_recommendations(
         unknown_course_df['COURSE_ID'].values, course_matrix, user_vector, threshold
     )
-    return pd.DataFrame({'COURSE_ID': courses, 'SCORE': scores})
+    res_df = pd.DataFrame({'COURSE_ID': courses, 'SCORE': scores})
+    return res_df.sort_values('SCORE', ascending=False, kind='stable').head(top_courses)
 
 
 def predict_cluster_peers(model_name, user_id, params):
@@ -202,7 +204,11 @@ def predict(model_name, params):
             params.get('top_courses', 10),
         )
     if model_name == USER_PROFILE:
-        return predict_user_profile(int(params['user_id']), params.get('profile_sim_threshold', 10.0))
+        return predict_user_profile(
+            int(params['user_id']),
+            params.get('profile_sim_threshold', 10.0),
+            params.get('top_courses', 10),
+        )
     if model_name in (CLUSTERING, CLUSTERING_PCA):
         return predict_cluster_peers(model_name, int(params['user_id']), params)
     raise ValueError(f"Unknown model: {model_name}")

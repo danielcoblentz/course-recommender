@@ -100,8 +100,10 @@ model_selection = st.sidebar.selectbox(
 params = {}
 st.sidebar.subheader('2. Tune Hyper-parameters:')
 
-if model_selection == backend.COURSE_SIMILARITY:
+if model_selection in (backend.COURSE_SIMILARITY, backend.USER_PROFILE):
     params['top_courses'] = st.sidebar.slider('Top courses', min_value=1, max_value=100, value=10, step=1)
+
+if model_selection == backend.COURSE_SIMILARITY:
     params['sim_threshold'] = st.sidebar.slider('Course Similarity Threshold %',
                                                 min_value=0, max_value=100, value=50, step=10)
 
@@ -135,7 +137,7 @@ if pred_button:
         res_df = predict(model_selection, params)
         if res_df.empty:
             st.info("No results found. Try lowering the threshold.")
-        elif model_selection == backend.COURSE_SIMILARITY:
+        elif 'COURSE_ID' in res_df:
             res_df = pd.merge(res_df, load_courses(), on="COURSE_ID").drop('COURSE_ID', axis=1)
             st.table(res_df)
         else:
