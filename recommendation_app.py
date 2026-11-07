@@ -13,46 +13,24 @@ st.set_page_config(
 )
 
 @st.cache_data
-def load_ratings():
-    return backend.load_ratings()
-
-@st.cache_data
-def load_course_sims():
-    return backend.load_course_sims()
+def load_courses():
+    return backend.load_courses()
 
 @st.cache_data
 def load_profile():
     return backend.load_profile()
 
-@st.cache_data
-def load_courses():
-    return backend.load_courses()
-
-@st.cache_data
-def load_courses_genre():
-    return backend.load_courses_genre()
-
-@st.cache_data
-def load_bow():
-    return backend.load_bow()
-
 def init_recommender_app():
     """
-     function loads all datasets once, returns a DataFrame of the selected courses
+    Shows the course catalogue and returns a DataFrame of the courses the user ticks.
+
+    The backend reads its own model data per prediction, so the page only
+    loads the catalogue here and the user list for the sidebar.
     """
-    with st.spinner('Loading datasets...'):
-        ratings_df = load_ratings()
-        sim_df = load_course_sims()
+    with st.spinner('Loading courses...'):
         course_df = load_courses()
-        course_bow_df = load_bow()
-        profile_df = load_profile()
-        course_genre_df = load_courses_genre()
 
-    st.success('Datasets loaded successfully..')
-    st.markdown("---")
     st.subheader("Select courses that you have audited or completed:")
-
-
 
     # Build an interactive table for `course_df`
     gb = GridOptionsBuilder.from_dataframe(course_df)
