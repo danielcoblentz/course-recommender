@@ -106,8 +106,9 @@ if model_selection == backend.COURSE_SIMILARITY:
                                                 min_value=0, max_value=100, value=50, step=10)
 
 elif model_selection == backend.USER_PROFILE:
-    params['profile_sim_threshold'] = st.sidebar.slider('User Profile Similarity Threshold %',
-                                                        min_value=0, max_value=50, value=30, step=5)
+    params['profile_sim_threshold'] = st.sidebar.slider(
+        'Minimum profile match score', min_value=0, max_value=100, value=10, step=5,
+        help="A course's score is the sum of your profile weights for each of its genres.")
 
 else:  # both clustering models
     params['cluster_no'] = st.sidebar.slider('Number of Clusters', min_value=2, max_value=50, value=5, step=1)
