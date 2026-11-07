@@ -164,6 +164,7 @@ def predict(model_name, user_ids, params):
     if "profile_sim_threshold" in params:
         profile_sim_threshold = params["profile_sim_threshold"]
 
+    top_courses = params.get("top_courses", 10)
     cluster_no = params.get("cluster_no", 5)
     temp_user_two = params.get("temp_user_two", None)
 
@@ -180,15 +181,15 @@ def predict(model_name, user_ids, params):
             # dict of course->similarity
             res = course_similarity_recommendations(idx_id_dict, id_idx_dict, enrolled_course_ids, sim_matrix)
 
-            # filter  similarity threshold
+            # res is sorted best first, so stop at the threshold or at top_courses
             users, courses, scores = [], [], []
             for key, score in res.items():
-                if score >= sim_threshold:
-                    users.append(user_id)
-                    courses.append(key)
-                    scores.append(score)
+                if score < sim_threshold or len(courses) >= top_courses:
+                    break
+                users.append(user_id)
+                courses.append(key)
+                scores.append(score)
 
-            
             res_dict = {
                 'USER': users,
                 'COURSE_ID': courses,

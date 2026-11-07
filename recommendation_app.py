@@ -114,7 +114,7 @@ st.sidebar.subheader('2. Tune Hyper-parameters:')
 
 # Course Similarity
 if model_selection == backend.models[0]:
-    top_courses = st.sidebar.slider('Top courses', min_value=0, max_value=100, value=10, step=1)
+    top_courses = st.sidebar.slider('Top courses', min_value=1, max_value=100, value=10, step=1)
     course_sim_threshold = st.sidebar.slider('Course Similarity Threshold %',
                                              min_value=0, max_value=100,
                                              value=50, step=10)
