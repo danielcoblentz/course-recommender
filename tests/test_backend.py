@@ -185,3 +185,45 @@ class TestCombineClusterLabels:
 
         assert len(res) == 1
         assert res.iloc[0]["cluster"] == 3
+
+
+class TestClusterUsers:
+    """K-Means grouping behind both clustering models."""
+
+    @staticmethod
+    def profiles():
+        # Two clear interest groups split on Python, plus a Database column with
+        # far larger raw values that is pure noise and carries no group signal.
+        rng = np.random.default_rng(0)
+        n = 40
+        python = np.r_[np.full(n // 2, 1.0), np.full(n // 2, 3.0)] + rng.normal(0, 0.05, n)
+        database = rng.normal(500, 60, n)
+        return pd.DataFrame({"user": range(n), "Python": python, "Database": database})
+
+    @staticmethod
+    def recovers_python_split(res):
+        first, second = res["cluster"].iloc[:20], res["cluster"].iloc[20:]
+        return first.nunique() == 1 and second.nunique() == 1 and first.iloc[0] != second.iloc[0]
+
+    def test_features_are_standardized_before_clustering(self):
+        # Unscaled, the noisy Database column would swamp the Python split.
+        res = backend.cluster_users(self.profiles(), n_clusters=2)
+        assert self.recovers_python_split(res)
+
+    def test_pca_variant_returns_one_label_per_user(self):
+        df = self.profiles()
+        res = backend.cluster_users(df, n_clusters=2, pca_components=2)
+
+        assert res["user"].tolist() == df["user"].tolist()
+        assert set(res["cluster"]) == {0, 1}
+
+    def test_is_deterministic(self):
+        df = self.profiles()
+        first = backend.cluster_users(df, n_clusters=3, pca_components=2)
+        second = backend.cluster_users(df, n_clusters=3, pca_components=2)
+        assert first["cluster"].tolist() == second["cluster"].tolist()
+
+
+def test_predict_rejects_an_unknown_model():
+    with pytest.raises(ValueError):
+        backend.predict("Not A Model", {})
