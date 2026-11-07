@@ -141,4 +141,7 @@ if pred_button:
             res_df = pd.merge(res_df, load_courses(), on="COURSE_ID").drop('COURSE_ID', axis=1)
             st.table(res_df)
         else:
-            st.table(res_df)
+            others = len(res_df) - 1
+            st.write(f"User {params['user_id']} is in cluster {res_df['cluster'].iloc[0]} "
+                     f"with {others:,} other users.")
+            st.dataframe(res_df, hide_index=True)
