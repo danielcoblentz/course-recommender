@@ -39,45 +39,29 @@ def load_bow():
 
 def get_doc_dicts():
     """
-    Creates dictionaries mapping doc indices to doc IDs and vice versa for  Bag-of-Words data
+    Maps each row of the similarity matrix (doc_index) to its course ID and back.
     """
-    bow_df = load_bow()
-    # group by doc_index, doc_id to ensure there is a unique row
-    grouped_df = bow_df.groupby(['doc_index', 'doc_id']).max().reset_index(drop=False)
-    idx_id_dict = grouped_df[['doc_id']].to_dict()['doc_id']
+    docs = load_bow()[['doc_index', 'doc_id']].drop_duplicates()
+    idx_id_dict = dict(zip(docs['doc_index'], docs['doc_id']))
     id_idx_dict = {v: k for k, v in idx_id_dict.items()}
-    
-    del grouped_df
     return idx_id_dict, id_idx_dict
 
 
-
 def course_similarity_recommendations(idx_id_dict, id_idx_dict, enrolled_course_ids, sim_matrix):
-    all_courses = set(idx_id_dict.values())
-    # the courses the user hasn't enrolled in yet
-    unselected_course_ids = all_courses.difference(enrolled_course_ids)
+    """
+    Scores every course the user has not taken by its highest similarity to
+    any course they have, and returns a course_id -> score dict, best first.
+    """
+    enrolled = set(enrolled_course_ids)
+    enrolled_idx = [id_idx_dict[c] for c in enrolled if c in id_idx_dict]
+    if not enrolled_idx:
+        return {}
 
-    # This dict will store course_id -> best similarity
-    res = {}
+    candidate_idx = [idx for idx, course in idx_id_dict.items() if course not in enrolled]
+    best = np.asarray(sim_matrix)[np.ix_(enrolled_idx, candidate_idx)].max(axis=0)
 
-    for enrolled_course in enrolled_course_ids:
-        for unselect_course in unselected_course_ids:
-            if enrolled_course in id_idx_dict and unselect_course in id_idx_dict:
-                idx1 = id_idx_dict[enrolled_course]
-                idx2 = id_idx_dict[unselect_course]
-                sim = sim_matrix[idx1][idx2]
-                # Keep track of the highest similarity for each unselect course
-                if unselect_course not in res:
-                    res[unselect_course] = sim
-                else:
-                    if sim >= res[unselect_course]:
-                        res[unselect_course] = sim
-
-
-
-    res = {k: v for k, v in sorted(res.items(), key=lambda item: item[1], reverse=True)}
-    return res
-
+    order = np.argsort(-best, kind='stable')
+    return {idx_id_dict[candidate_idx[i]]: best[i] for i in order}
 
 
 def user_profile_recommendations(course_ids, course_matrix, user_vector, threshold):
