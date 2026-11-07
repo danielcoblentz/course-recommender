@@ -173,10 +173,7 @@ def train(model_name, params):
 
         # every column except user is a feature
         feature_names = list(user_profile_df.columns[1:])
-        features = user_profile_df.loc[:, user_profile_df.columns != 'user']
-
-        # scale the features in place
-        user_profile_df[feature_names] = scaler.fit_transform(user_profile_df[feature_names])
+        features = scaler.fit_transform(user_profile_df[feature_names])
         user_ids = user_profile_df[['user']]
 
         # fit Kmeans
@@ -196,10 +193,7 @@ def train(model_name, params):
 
         # collect feature names
         feature_names = list(user_profile_df.columns[1:])
-        features = user_profile_df.loc[:, user_profile_df.columns != 'user']
-
-        # Scale  features
-        user_profile_df[feature_names] = scaler.fit_transform(user_profile_df[feature_names])
+        features = scaler.fit_transform(user_profile_df[feature_names])
         user_ids = user_profile_df[['user']]
 
         # PCA for dimensionality reduction
