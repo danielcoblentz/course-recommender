@@ -135,17 +135,6 @@ def cluster_users(profile_df, n_clusters, pca_components=None):
     return combine_cluster_labels(profile_df[['user']], labels=km.labels_)
 
 
-def train(model_name, params):
-    """
-    Trains the clustering models; the content based models have nothing to fit.
-    """
-    cluster_no = params.get("cluster_no", 5)
-
-    if model_name == CLUSTERING:
-        return cluster_users(load_profile(), cluster_no)
-    elif model_name == CLUSTERING_PCA:
-        return cluster_users(load_profile(), cluster_no, params.get("pca_components", 2))
-
 def predict_course_similarity(enrolled_course_ids, sim_threshold, top_courses):
     """
     Ranks the courses most similar to the ones selected, best first.
@@ -190,7 +179,8 @@ def predict_cluster_peers(model_name, user_id, params):
     """
     Returns every user that lands in the same cluster as `user_id`.
     """
-    cluster_df = train(model_name, params)
+    pca_components = params.get('pca_components', 2) if model_name == CLUSTERING_PCA else None
+    cluster_df = cluster_users(load_profile(), params.get('cluster_no', 5), pca_components)
     user_rows = cluster_df[cluster_df['user'] == user_id]
     if user_rows.empty:
         return cluster_df.iloc[0:0]

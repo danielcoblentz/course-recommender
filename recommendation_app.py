@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import time
 import backend as backend
 from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
@@ -81,18 +80,8 @@ def init_recommender_app():
 
 
 
-def train(model_name, params):
-    """
-    Wrapper function that calls the 'train' function in 'backend.py' and handles any UI messages
-    """
-    with st.spinner(f'Training {model_name} model...'):
-        time.sleep(0.5)
-        backend.train(model_name, params)
-    st.success('Done training!')
-
 def predict(model_name, params):
     with st.spinner(f'Generating {model_name} recommendations...'):
-        time.sleep(0.5)
         res = backend.predict(model_name, params)
     st.success('Recommendations generated!')
     return res
@@ -132,14 +121,8 @@ if model_selection != backend.COURSE_SIMILARITY:
     params['user_id'] = st.sidebar.selectbox("Select your user ID", user_ids_list)
 
 
-# 3. Training -----------
-st.sidebar.subheader('3. Training')
-training_button = st.sidebar.button("Train Model")
-if training_button:
-    train(model_selection, params)
-
-# 4. Prediction
-st.sidebar.subheader('4. Prediction')
+# 3. Prediction (the clustering models are fit fresh on each run)
+st.sidebar.subheader('3. Prediction')
 pred_button = st.sidebar.button("Recommend New Courses")
 if pred_button:
     if model_selection == backend.COURSE_SIMILARITY:
